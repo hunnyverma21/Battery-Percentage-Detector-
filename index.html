@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battery Detector</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; display: flex; justify-content: center;
+  align-items: center; background: #101827; color: white;
+  font-family: Arial, sans-serif;
+}
+.container {
+  width: min(340px, calc(100% - 32px)); padding: 35px; text-align: center;
+  background: #1e293b; border-radius: 25px; box-shadow: 0 10px 35px #0006;
+}
+h1 { font-size: 25px; }
+.battery {
+  width: 170px; height: 75px; border: 5px solid white; border-radius: 12px;
+  margin: 35px auto; position: relative; padding: 5px;
+}
+.battery::after {
+  content: ""; position: absolute; right: -13px; top: 20px; width: 8px;
+  height: 25px; background: white; border-radius: 0 4px 4px 0;
+}
+.level {
+  height: 100%; width: 0%; background: #22c55e; border-radius: 5px;
+  transition: width .5s, background .5s;
+}
+.percentage { font-size: 55px; font-weight: bold; margin: 15px; }
+.status { color: #4ade80; font-size: 17px; }
+.details {
+  margin-top: 25px; padding: 15px; background: #334155;
+  border-radius: 12px; line-height: 2;
+}
+button {
+  margin-top: 20px; padding: 12px 22px; border: none; border-radius: 10px;
+  background: #2563eb; color: white; cursor: pointer;
+}
+button:hover { background: #1d4ed8; }
+.note { color: #cbd5e1; font-size: 12px; line-height: 1.5; margin-top: 18px; }
+</style>
+</head>
+<body>
+<main class="container">
+  <h1>🔋 Battery Detector</h1>
+  <div class="battery"><div class="level" id="level"></div></div>
+  <div class="percentage" id="percentage">--%</div>
+  <div class="status" id="status">Checking battery...</div>
+  <div class="details">
+    <div>Charging: <span id="charging">--</span></div>
+    <div>Time to charge: <span id="chargeTime">--</span></div>
+    <div>Time remaining: <span id="dischargeTime">--</span></div>
+  </div>
+  <button id="refresh">Refresh Battery</button>
+  <p class="note">Battery readings depend on browser and device support.</p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) return "Unavailable";
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return hours ? `${hours} hr ${remainder} min` : `${remainder} min`;
+}
+async function getBattery() {
+  if (!("getBattery" in navigator)) {
+    $("status").textContent = "Battery API is not supported by this browser.";
+    $("percentage").textContent = "N/A";
+    return;
+  }
+  try {
+    const battery = await navigator.getBattery();
+    function updateBattery() {
+      const percent = Math.round(battery.level * 100);
+      $("percentage").textContent = `${percent}%`;
+      $("level").style.width = `${percent}%`;
+      $("level").style.background =
+        percent <= 20 ? "#ef4444" : percent <= 50 ? "#f59e0b" : "#22c55e";
+      $("charging").textContent = battery.charging ? "Yes ⚡" : "No";
+      $("status").textContent = percent <= 20
+        ? "⚠ Low Battery!"
+        : battery.charging ? "⚡ Charging..." : "Battery Discharging";
+      $("chargeTime").textContent = battery.charging
+        ? formatTime(battery.chargingTime) : "Not charging";
+      $("dischargeTime").textContent = battery.charging
+        ? "Charging" : formatTime(battery.dischargingTime);
+    }
+    updateBattery();
+    ["levelchange", "chargingchange", "chargingtimechange",
+     "dischargingtimechange"].forEach(event =>
+      battery.addEventListener(event, updateBattery)
+    );
+  } catch (error) {
+    $("status").textContent = "Unable to access battery information.";
+  }
+}
+$("refresh").addEventListener("click", getBattery);
+getBattery();
+</script>
+</body>
+</html>
